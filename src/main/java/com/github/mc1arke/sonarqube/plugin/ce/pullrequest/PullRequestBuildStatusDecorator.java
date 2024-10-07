@@ -18,6 +18,7 @@
  */
 package com.github.mc1arke.sonarqube.plugin.ce.pullrequest;
 
+import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.filter.IssueFilterRunner;
 import org.sonar.db.alm.setting.ALM;
 import org.sonar.db.alm.setting.AlmSettingDto;
 import org.sonar.db.alm.setting.ProjectAlmSettingDto;
@@ -27,7 +28,10 @@ import java.util.List;
 public interface PullRequestBuildStatusDecorator {
 
     DecorationResult decorateQualityGateStatus(AnalysisDetails analysisDetails, AlmSettingDto almSettingDto,
-                                   ProjectAlmSettingDto projectAlmSettingDto);
+            ProjectAlmSettingDto projectAlmSettingDto);
+
+    DecorationResult decorateQualityGateStatus(AnalysisDetails analysisDetails, AlmSettingDto almSettingDto,
+                                   ProjectAlmSettingDto projectAlmSettingDto, IssueFilterRunner issueFilterRunner);
 
     List<ALM> alm();
 

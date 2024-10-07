@@ -19,6 +19,7 @@
 package com.github.mc1arke.sonarqube.plugin.almclient.github;
 
 import com.github.mc1arke.sonarqube.plugin.almclient.github.model.CheckRunDetails;
+import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.filter.IssueFilterRunner;
 
 import java.io.IOException;
 

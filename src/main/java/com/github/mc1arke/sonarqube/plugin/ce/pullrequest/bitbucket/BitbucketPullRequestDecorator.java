@@ -27,6 +27,9 @@ import com.github.mc1arke.sonarqube.plugin.almclient.bitbucket.model.CodeInsight
 import com.github.mc1arke.sonarqube.plugin.almclient.bitbucket.model.DataValue;
 import com.github.mc1arke.sonarqube.plugin.almclient.bitbucket.model.ReportData;
 import com.github.mc1arke.sonarqube.plugin.almclient.bitbucket.model.ReportStatus;
+import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.PostAnalysisIssueVisitor;
+import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.filter.IssueFilterRunner;
+import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.filter.IssueFilterRunner.NoFilterIssueFilterRunner;
 import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.report.AnalysisIssueSummary;
 import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.report.AnalysisSummary;
 import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.report.ReportGenerator;
@@ -75,7 +78,15 @@ public class BitbucketPullRequestDecorator implements PullRequestBuildStatusDeco
     }
 
     @Override
-    public DecorationResult decorateQualityGateStatus(AnalysisDetails analysisDetails, AlmSettingDto almSettingDto, ProjectAlmSettingDto projectAlmSettingDto) {
+    public DecorationResult decorateQualityGateStatus(AnalysisDetails analysisDetails, AlmSettingDto almSettingDto,
+            ProjectAlmSettingDto projectAlmSettingDto) {
+        return decorateQualityGateStatus(analysisDetails, almSettingDto, projectAlmSettingDto,
+                new NoFilterIssueFilterRunner());
+    }
+
+    @Override
+    public DecorationResult decorateQualityGateStatus(AnalysisDetails analysisDetails, AlmSettingDto almSettingDto,
+            ProjectAlmSettingDto projectAlmSettingDto, IssueFilterRunner issueFilterRunner) {
         BitbucketClient client = bitbucketClientFactory.createClient(projectAlmSettingDto, almSettingDto);
         try {
             if (!client.supportsCodeInsights()) {
@@ -98,7 +109,7 @@ public class BitbucketPullRequestDecorator implements PullRequestBuildStatusDeco
 
             client.uploadReport(analysisDetails.getCommitSha(), codeInsightsReport, reportKey);
 
-            updateAnnotations(client, analysisDetails, reportKey);
+            updateAnnotations(client, analysisDetails, reportKey, issueFilterRunner);
         } catch (IOException e) {
             LOGGER.error("Could not decorate pull request for project {}", analysisDetails.getAnalysisProjectKey(), e);
         }
@@ -123,14 +134,18 @@ public class BitbucketPullRequestDecorator implements PullRequestBuildStatusDeco
         return reportData;
     }
 
-    private void updateAnnotations(BitbucketClient client, AnalysisDetails analysisDetails, String reportKey) throws IOException {
+    private void updateAnnotations(BitbucketClient client, AnalysisDetails analysisDetails, String reportKey,
+            IssueFilterRunner issueFilterRunner) throws IOException {
         final AtomicInteger chunkCounter = new AtomicInteger(0);
 
         client.deleteAnnotations(analysisDetails.getCommitSha(), reportKey);
 
         AnnotationUploadLimit uploadLimit = client.getAnnotationUploadLimit();
 
-        Map<Integer, Set<CodeInsightsAnnotation>> annotationChunks = analysisDetails.getScmReportableIssues().stream()
+        List<PostAnalysisIssueVisitor.ComponentIssue> issues =
+                issueFilterRunner.filterIssues(analysisDetails.getScmReportableIssues());
+        Map<Integer, Set<CodeInsightsAnnotation>> annotationChunks = issues
+                .stream()
                 .filter(i -> !(i.getIssue().type() == RuleType.SECURITY_HOTSPOT && Issue.SECURITY_HOTSPOT_RESOLUTIONS
                         .contains(i.getIssue().resolution())))
                 .sorted(Comparator.comparing(a -> Severity.ALL.indexOf(a.getIssue().severity())))

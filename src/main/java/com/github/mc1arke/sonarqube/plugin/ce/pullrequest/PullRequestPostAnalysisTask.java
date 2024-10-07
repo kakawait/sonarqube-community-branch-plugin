@@ -18,6 +18,10 @@
  */
 package com.github.mc1arke.sonarqube.plugin.ce.pullrequest;
 
+import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.filter.IssueFilterRunner;
+import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.filter.IssueFilterRunner.NoFilterIssueFilterRunner;
+import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.filter.SeverityExclusionFilter;
+import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.filter.TypeExclusionFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonar.api.ce.posttask.Analysis;
@@ -31,10 +35,18 @@ import org.sonar.db.alm.setting.AlmSettingDto;
 import org.sonar.db.alm.setting.ProjectAlmSettingDto;
 import org.sonar.db.component.BranchDao;
 import org.sonar.db.component.BranchDto;
+import org.sonar.db.property.PropertyDto;
 import org.sonar.db.protobuf.DbProjectBranches;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Predicate;
+
+import static com.github.mc1arke.sonarqube.plugin.CommunityBranchPlugin.PR_FILTER_MAXAMOUNT;
+import static com.github.mc1arke.sonarqube.plugin.CommunityBranchPlugin.PR_FILTER_SEVERITY_EXCLUSION;
+import static com.github.mc1arke.sonarqube.plugin.CommunityBranchPlugin.PR_FILTER_TYPE_EXCLUSION;
 
 public class PullRequestPostAnalysisTask implements PostProjectAnalysisTask {
 
@@ -90,7 +102,6 @@ public class PullRequestPostAnalysisTask implements PostProjectAnalysisTask {
             projectAlmSettingDto = optionalProjectAlmSettingDto.get();
             String almSettingUuid = projectAlmSettingDto.getAlmSettingUuid();
             optionalAlmSettingDto = dbClient.almSettingDao().selectByUuid(dbSession, almSettingUuid);
-
         }
 
         if (optionalAlmSettingDto.isEmpty()) {
@@ -135,12 +146,31 @@ public class PullRequestPostAnalysisTask implements PostProjectAnalysisTask {
                                     postAnalysisIssueVisitor.getIssues(), qualityGate, projectAnalysis);
 
         PullRequestBuildStatusDecorator pullRequestDecorator = optionalPullRequestDecorator.get();
+
         LOGGER.info("Using pull request decorator {}", pullRequestDecorator.getClass().getName());
-        DecorationResult decorationResult = pullRequestDecorator.decorateQualityGateStatus(analysisDetails, almSettingDto, projectAlmSettingDto);
+        DecorationResult decorationResult =
+                pullRequestDecorator.decorateQualityGateStatus(analysisDetails, almSettingDto, projectAlmSettingDto,
+                        getIssueFilterList(analysisDetails).orElse(new NoFilterIssueFilterRunner()));
 
         decorationResult.getPullRequestUrl().ifPresent(pullRequestUrl -> persistPullRequestUrl(pullRequestUrl, projectAnalysis, optionalPullRequestId.get()));
     }
 
+    private Optional<IssueFilterRunner> getIssueFilterList(AnalysisDetails analysisDetails) {
+        List<Predicate<PostAnalysisIssueVisitor.ComponentIssue>> filterList = new ArrayList<>();
+
+        Optional<String> optionalSeverityExclusion = analysisDetails.getScannerProperty(PR_FILTER_SEVERITY_EXCLUSION);
+        Optional<String> optionalTypeExclusion = analysisDetails.getScannerProperty(PR_FILTER_TYPE_EXCLUSION);
+        Optional<String> optionalMaxAmount = analysisDetails.getScannerProperty(PR_FILTER_MAXAMOUNT);
+
+        optionalSeverityExclusion.ifPresent(severityString -> filterList.add(new SeverityExclusionFilter(severityString)));
+        optionalTypeExclusion.ifPresent(typeString -> filterList.add(new TypeExclusionFilter(typeString)));
+        if (filterList.isEmpty() && optionalMaxAmount.isEmpty()) {
+            return Optional.empty();
+        } else {
+            return Optional.of(
+                    new IssueFilterRunner(filterList, optionalMaxAmount.map(Integer::parseInt).orElse(null)));
+        }
+    }
 
     private static Optional<PullRequestBuildStatusDecorator> findCurrentPullRequestStatusDecorator(
             AlmSettingDto almSetting, List<PullRequestBuildStatusDecorator> pullRequestDecorators) {

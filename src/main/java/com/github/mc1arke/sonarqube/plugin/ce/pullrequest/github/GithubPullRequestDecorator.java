@@ -28,6 +28,8 @@ import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.AnalysisDetails;
 import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.DecorationResult;
 import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.PostAnalysisIssueVisitor;
 import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.PullRequestBuildStatusDecorator;
+import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.filter.IssueFilterRunner;
+import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.filter.IssueFilterRunner.NoFilterIssueFilterRunner;
 import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.markup.MarkdownFormatterFactory;
 import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.report.AnalysisSummary;
 import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.report.ReportGenerator;
@@ -62,11 +64,20 @@ public class GithubPullRequestDecorator implements PullRequestBuildStatusDecorat
 
     @Override
     public DecorationResult decorateQualityGateStatus(AnalysisDetails analysisDetails, AlmSettingDto almSettingDto,
-                                          ProjectAlmSettingDto projectAlmSettingDto) {
+            ProjectAlmSettingDto projectAlmSettingDto) {
+        return decorateQualityGateStatus(analysisDetails, almSettingDto, projectAlmSettingDto, new NoFilterIssueFilterRunner());
+    }
+
+    @Override
+    public DecorationResult decorateQualityGateStatus(AnalysisDetails analysisDetails, AlmSettingDto almSettingDto,
+            ProjectAlmSettingDto projectAlmSettingDto, IssueFilterRunner issueFilterRunner) {
         AnalysisSummary analysisSummary = reportGenerator.createAnalysisSummary(analysisDetails);
 
+        List<PostAnalysisIssueVisitor.ComponentIssue> issues =
+                issueFilterRunner.filterIssues(analysisDetails.getScmReportableIssues());
+
         CheckRunDetails checkRunDetails = CheckRunDetails.builder()
-                .withAnnotations(analysisDetails.getScmReportableIssues().stream()
+                .withAnnotations(issues.stream()
                         .map(GithubPullRequestDecorator::createAnnotation)
                         .collect(Collectors.toList()))
                 .withCheckConclusionState(analysisDetails.getQualityGateStatus() == QualityGate.Status.OK ? CheckConclusionState.SUCCESS : CheckConclusionState.FAILURE)

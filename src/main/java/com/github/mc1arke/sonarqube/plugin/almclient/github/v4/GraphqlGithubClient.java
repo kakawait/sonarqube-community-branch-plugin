@@ -24,6 +24,7 @@ import com.github.mc1arke.sonarqube.plugin.almclient.github.model.Annotation;
 import com.github.mc1arke.sonarqube.plugin.almclient.github.model.CheckRunDetails;
 import com.github.mc1arke.sonarqube.plugin.almclient.github.v4.model.CommentClassifiers;
 import com.github.mc1arke.sonarqube.plugin.almclient.github.v4.model.RequestableCheckStatusState;
+import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.filter.IssueFilterRunner;
 import io.aexp.nodes.graphql.Argument;
 import io.aexp.nodes.graphql.Arguments;
 import io.aexp.nodes.graphql.GraphQLRequestEntity;
