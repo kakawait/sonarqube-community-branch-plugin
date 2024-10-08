@@ -19,6 +19,7 @@
 package com.github.mc1arke.sonarqube.plugin.ce.pullrequest.markup;
 
 import java.util.stream.IntStream;
+
 import static com.google.common.html.HtmlEscapers.htmlEscaper;
 
 public final class MarkdownFormatterFactory extends BaseFormatterFactory {

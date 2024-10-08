@@ -17,17 +17,7 @@
  */
 package com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.pullrequest.action;
 
-import static org.sonar.server.user.AbstractUserSession.insufficientPrivilegesException;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import javax.annotation.Nullable;
-
+import com.google.common.base.Strings;
 import org.apache.commons.lang.StringUtils;
 import org.sonar.api.measures.CoreMetrics;
 import org.sonar.api.server.ws.Request;
@@ -51,7 +41,16 @@ import org.sonar.server.ws.WsUtils;
 import org.sonarqube.ws.ProjectPullRequests;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import com.google.common.base.Strings;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import javax.annotation.Nullable;
+
+import static org.sonar.server.user.AbstractUserSession.insufficientPrivilegesException;
 
 public class ListAction extends ProjectWsAction {
 

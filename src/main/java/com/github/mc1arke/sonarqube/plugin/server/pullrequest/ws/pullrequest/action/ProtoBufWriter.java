@@ -17,10 +17,9 @@
  */
 package com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.pullrequest.action;
 
+import com.google.protobuf.Message;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
-
-import com.google.protobuf.Message;
 
 @FunctionalInterface
 interface ProtoBufWriter {

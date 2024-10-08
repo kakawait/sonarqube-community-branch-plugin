@@ -1,6 +1,5 @@
 package com.github.mc1arke.sonarqube.plugin.ce.pullrequest.filter;
 
-import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.PostAnalysisIssueVisitor;
 import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.PostAnalysisIssueVisitor.ComponentIssue;
 
 import java.util.Collections;

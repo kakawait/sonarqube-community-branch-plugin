@@ -18,12 +18,6 @@
  */
 package com.github.mc1arke.sonarqube.plugin.ce.pullrequest;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
 import org.sonar.api.issue.IssueStatus;
 import org.sonar.ce.task.projectanalysis.analysis.AnalysisMetadataHolder;
 import org.sonar.ce.task.projectanalysis.component.Component;
@@ -35,6 +29,12 @@ import org.sonar.core.issue.tracking.Input;
 import org.sonar.core.issue.tracking.NonClosedTracking;
 import org.sonar.core.issue.tracking.Tracker;
 import org.sonar.core.issue.tracking.Tracking;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class PullRequestFixedIssuesIssueVisitor extends IssueVisitor {
 
