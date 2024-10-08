@@ -56,17 +56,22 @@ import com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.binding.action.
 import com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.binding.action.ValidateBindingAction;
 import com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.pullrequest.PullRequestWs;
 import com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.pullrequest.action.DeleteAction;
-import com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.pullrequest.action.ListAction;
-
 import com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.pullrequest.action.GitLabReportAction;
+import com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.pullrequest.action.ListAction;
 import org.sonar.api.CoreProperties;
 import org.sonar.api.Plugin;
 import org.sonar.api.PropertyType;
 import org.sonar.api.SonarQubeSide;
 import org.sonar.api.config.PropertyDefinition;
 import org.sonar.api.resources.Qualifiers;
+import org.sonar.api.rule.Severity;
 import org.sonar.core.config.PurgeConstants;
 import org.sonar.core.extension.CoreExtension;
+
+import static org.sonarqube.ws.Common.RuleType.BUG;
+import static org.sonarqube.ws.Common.RuleType.CODE_SMELL;
+import static org.sonarqube.ws.Common.RuleType.SECURITY_HOTSPOT;
+import static org.sonarqube.ws.Common.RuleType.VULNERABILITY;
 
 /**
  * @author Michael Clarke
@@ -75,6 +80,9 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
 
     public static final String IMAGE_URL_BASE = "com.github.mc1arke.sonarqube.plugin.branch.image-url-base";
     public static final String PR_SUMMARY_NOTE_EDIT = "com.github.mc1arke.sonarqube.plugin.branch.pullrequest.summary.edit";
+    public static final String PR_FILTER_TYPE_EXCLUSION = "com.github.mc1arke.sonarqube.plugin.branch.filter.type.exclusions";
+    public static final String PR_FILTER_SEVERITY_EXCLUSION = "com.github.mc1arke.sonarqube.plugin.branch.filter.severity.exclusions";
+    public static final String PR_FILTER_MAXAMOUNT = "com.github.mc1arke.sonarqube.plugin.branch.filter.maxamount";
 
     @Override
     public String getName() {
@@ -160,15 +168,51 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                                           .build(),
                 MonoRepoFeature.class);
 
-            context.addExtensions(PropertyDefinition.builder(PR_SUMMARY_NOTE_EDIT)
+            PropertyDefinition editSummaryProperty = PropertyDefinition
+                    .builder(PR_SUMMARY_NOTE_EDIT)
                     .category(getName())
                     .subCategory("Merge Request Decoration")
                     .onQualifiers(Qualifiers.PROJECT)
-                    .name("Edit summary note")
-                    .description("Edit summary discussion thread instead of resolving it and creating a new one (Gitlab only).")
+                    .name("Edit editSummaryProperty note")
+                    .description(
+                            "Edit editSummaryProperty discussion thread instead of resolving it and creating a new one (Gitlab only).")
                     .type(PropertyType.BOOLEAN)
                     .defaultValue(String.valueOf(false))
-                    .build());
+                    .build();
+
+            PropertyDefinition typeFilterProperty = PropertyDefinition
+                    .builder(PR_FILTER_TYPE_EXCLUSION)
+                    .category(getName())
+                    .subCategory("Filters")
+                    .onQualifiers(Qualifiers.PROJECT)
+                    .name("RuleType Exclusions")
+                    .description(
+                            "Comma-separated list of ruletypes you want to exclude, possible values: CODE_SMELL, BUG, VULNERABILITY, SECURITY_HOTSPOT")
+                    .type(PropertyType.STRING)
+                    .options(BUG.name(), CODE_SMELL.name(), VULNERABILITY.name(), SECURITY_HOTSPOT.name())
+                    .build();
+            PropertyDefinition severityFilterProperty = PropertyDefinition
+                    .builder(PR_FILTER_SEVERITY_EXCLUSION)
+                    .category(getName())
+                    .subCategory("Filters")
+                    .onQualifiers(Qualifiers.PROJECT)
+                    .name("Severity Exclusions")
+                    .description(
+                            "Comma-separated list of severity levels you want to exclude, possible values: INFO, MINOR, MAJOR, CRITICAL, BLOCKER")
+                    .type(PropertyType.STRING)
+                    .options(Severity.ALL)
+                    .build();
+            PropertyDefinition maxFilterProperty = PropertyDefinition
+                    .builder(PR_FILTER_MAXAMOUNT)
+                    .category(getName())
+                    .subCategory("Filters")
+                    .onQualifiers(Qualifiers.PROJECT)
+                    .name("Max amount")
+                    .description("Max amount of comments to be added to the pull request, must be > 0")
+                    .type(PropertyType.INTEGER)
+                    .build();
+
+            context.addExtensions(editSummaryProperty, typeFilterProperty, severityFilterProperty, maxFilterProperty);
         }
     }
 

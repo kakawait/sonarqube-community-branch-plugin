@@ -18,9 +18,8 @@
  */
 package com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.pullrequest;
 
-import org.sonar.api.server.ws.WebService;
-
 import com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.pullrequest.action.PullRequestWsAction;
+import org.sonar.api.server.ws.WebService;
 
 public class PullRequestWs implements WebService {
 

@@ -57,6 +57,12 @@ public class ScannerPullRequestPropertySensor implements Sensor {
 
         sensorContext.config().get(CommunityBranchPlugin.PR_SUMMARY_NOTE_EDIT)
                 .ifPresent(p -> sensorContext.addContextProperty(CommunityBranchPlugin.PR_SUMMARY_NOTE_EDIT, p));
+        sensorContext.config().get(CommunityBranchPlugin.PR_FILTER_SEVERITY_EXCLUSION)
+                .ifPresent(p -> sensorContext.addContextProperty(CommunityBranchPlugin.PR_FILTER_SEVERITY_EXCLUSION, p));
+        sensorContext.config().get(CommunityBranchPlugin.PR_FILTER_TYPE_EXCLUSION)
+                .ifPresent(p -> sensorContext.addContextProperty(CommunityBranchPlugin.PR_FILTER_TYPE_EXCLUSION, p));
+        sensorContext.config().get(CommunityBranchPlugin.PR_FILTER_MAXAMOUNT)
+                .ifPresent(p -> sensorContext.addContextProperty(CommunityBranchPlugin.PR_FILTER_MAXAMOUNT, p));
     }
 
 }

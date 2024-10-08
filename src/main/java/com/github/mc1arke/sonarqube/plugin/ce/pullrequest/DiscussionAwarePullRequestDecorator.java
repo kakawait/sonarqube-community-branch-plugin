@@ -18,6 +18,8 @@
  */
 package com.github.mc1arke.sonarqube.plugin.ce.pullrequest;
 
+import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.filter.IssueFilterRunner;
+import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.filter.IssueFilterRunner.NoFilterIssueFilterRunner;
 import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.report.AnalysisIssueSummary;
 import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.report.AnalysisSummary;
 import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.report.ReportGenerator;
@@ -63,13 +65,21 @@ public abstract class DiscussionAwarePullRequestDecorator<C, P, U, D, N> impleme
     }
 
     @Override
+    public DecorationResult decorateQualityGateStatus(AnalysisDetails analysisDetails, AlmSettingDto almSettingDto,
+            ProjectAlmSettingDto projectAlmSettingDto) {
+        return decorateQualityGateStatus(analysisDetails, almSettingDto, projectAlmSettingDto,
+                new NoFilterIssueFilterRunner());
+    }
+
+    @Override
     public DecorationResult decorateQualityGateStatus(AnalysisDetails analysis, AlmSettingDto almSettingDto,
-                                                      ProjectAlmSettingDto projectAlmSettingDto) {
+            ProjectAlmSettingDto projectAlmSettingDto, IssueFilterRunner issueFilterRunner) {
         C client = createClient(almSettingDto, projectAlmSettingDto);
         
         P pullRequest = getPullRequest(client, almSettingDto, projectAlmSettingDto, analysis);
         U user = getCurrentUser(client);
-        List<PostAnalysisIssueVisitor.ComponentIssue> openSonarqubeIssues = analysis.getScmReportableIssues();
+        List<PostAnalysisIssueVisitor.ComponentIssue> openSonarqubeIssues =
+                issueFilterRunner.filterIssues(analysis.getScmReportableIssues());
 
         List<Triple<D, N, Optional<ProjectIssueIdentifier>>> currentProjectSonarqubeComments = findSonarqubeComments(client,
                 pullRequest,

@@ -312,7 +312,7 @@ class PullRequestPostAnalysisTaskTest {
 
         PullRequestBuildStatusDecorator decorator2 = mock(PullRequestBuildStatusDecorator.class);
         doReturn(Collections.singletonList(ALM.GITHUB)).when(decorator2).alm();
-        doReturn(DecorationResult.builder().build()).when(decorator2).decorateQualityGateStatus(any(), any(), any());
+        doReturn(DecorationResult.builder().build()).when(decorator2).decorateQualityGateStatus(any(), any(), any(), any());
         pullRequestBuildStatusDecorators.add(decorator2);
 
         ProjectAlmSettingDto projectAlmSettingDto = mock(ProjectAlmSettingDto.class);
@@ -343,7 +343,7 @@ class PullRequestPostAnalysisTaskTest {
         verify(projectAnalysis).getAnalysis();
         verify(projectAnalysis).getQualityGate();
         verify(dbClient, never()).branchDao();
-        verify(decorator2).decorateQualityGateStatus(analysisDetailsArgumentCaptor.capture(), eq(almSettingDto), eq(projectAlmSettingDto));
+        verify(decorator2).decorateQualityGateStatus(analysisDetailsArgumentCaptor.capture(), eq(almSettingDto), eq(projectAlmSettingDto), any());
 
         AnalysisDetails analysisDetails =
                 new AnalysisDetails("pull-request", "revision", componentIssues, qualityGate, projectAnalysis);
@@ -373,7 +373,7 @@ class PullRequestPostAnalysisTaskTest {
 
         PullRequestBuildStatusDecorator decorator2 = mock(PullRequestBuildStatusDecorator.class);
         doReturn(Collections.singletonList(ALM.BITBUCKET)).when(decorator2).alm();
-        doReturn(DecorationResult.builder().withPullRequestUrl("pullRequestUrl").build()).when(decorator2).decorateQualityGateStatus(any(), any(), any());
+        doReturn(DecorationResult.builder().withPullRequestUrl("pullRequestUrl").build()).when(decorator2).decorateQualityGateStatus(any(), any(), any(), any());
         pullRequestBuildStatusDecorators.add(decorator2);
 
         ProjectAlmSettingDto projectAlmSettingDto = mock(ProjectAlmSettingDto.class);
@@ -405,7 +405,7 @@ class PullRequestPostAnalysisTaskTest {
         verify(dbClient, times(2)).openSession(false);
         verify(dbClient).branchDao();
         verify(branchDao).selectByPullRequestKey(dbSession, "uuid", "pull-request");
-        verify(decorator2).decorateQualityGateStatus(analysisDetailsArgumentCaptor.capture(), eq(almSettingDto), eq(projectAlmSettingDto));
+        verify(decorator2).decorateQualityGateStatus(analysisDetailsArgumentCaptor.capture(), eq(almSettingDto), eq(projectAlmSettingDto), any());
 
         ArgumentCaptor<DbProjectBranches.PullRequestData> pullRequestDataArgumentCaptor = ArgumentCaptor.forClass(
                 DbProjectBranches.PullRequestData.class);
@@ -440,7 +440,7 @@ class PullRequestPostAnalysisTaskTest {
 
         PullRequestBuildStatusDecorator decorator1 = mock(PullRequestBuildStatusDecorator.class);
         doReturn(Collections.singletonList(ALM.GITHUB)).when(decorator1).alm();
-        doReturn(DecorationResult.builder().withPullRequestUrl("pullRequestUrl").build()).when(decorator1).decorateQualityGateStatus(any(), any(), any());
+        doReturn(DecorationResult.builder().withPullRequestUrl("pullRequestUrl").build()).when(decorator1).decorateQualityGateStatus(any(), any(), any(), any());
         pullRequestBuildStatusDecorators.add(decorator1);
 
         PullRequestBuildStatusDecorator decorator2 = mock(PullRequestBuildStatusDecorator.class);
@@ -484,7 +484,7 @@ class PullRequestPostAnalysisTaskTest {
         verify(branchDao).selectByPullRequestKey(dbSession, "uuid", "pull-request");
         verify(decorator1).decorateQualityGateStatus(analysisDetailsArgumentCaptor.capture(),
                                                      almSettingDtoArgumentCaptor.capture(),
-                                                     projectAlmSettingDtoArgumentCaptor.capture());
+                                                     projectAlmSettingDtoArgumentCaptor.capture(), any());
         assertThat(almSettingDtoArgumentCaptor.getValue()).isSameAs(almSettingDto);
         assertThat(projectAlmSettingDtoArgumentCaptor.getValue()).isSameAs(projectAlmSettingDto);
 

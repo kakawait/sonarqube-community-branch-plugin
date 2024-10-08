@@ -18,12 +18,6 @@
  */
 package com.github.mc1arke.sonarqube.plugin.server;
 
-import java.time.Clock;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.Map;
-import java.util.regex.Pattern;
-
 import org.apache.commons.lang.StringUtils;
 import org.sonar.api.config.Configuration;
 import org.sonar.core.ce.CeTaskCharacteristics;
@@ -37,6 +31,12 @@ import org.sonar.db.component.ComponentDto;
 import org.sonar.server.ce.queue.BranchSupport;
 import org.sonar.server.ce.queue.BranchSupportDelegate;
 import org.sonar.server.setting.ProjectConfigurationLoader;
+
+import java.time.Clock;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * @author Michael Clarke
