@@ -48,6 +48,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static com.github.mc1arke.sonarqube.plugin.CommunityBranchPlugin.PR_PUBLISH_CI_STATUS;
+
 public class GitlabMergeRequestDecorator extends DiscussionAwarePullRequestDecorator<GitlabClient, MergeRequest, User, Discussion, Note> {
 
     public static final String PULLREQUEST_GITLAB_PROJECT_URL = "sonar.pullrequest.gitlab.projectUrl";
@@ -126,6 +128,9 @@ public class GitlabMergeRequestDecorator extends DiscussionAwarePullRequestDecor
     @Override
     protected void submitPipelineStatus(GitlabClient gitlabClient, MergeRequest mergeRequest, AnalysisDetails analysis,
                                         AnalysisSummary analysisSummary) {
+        if (!analysis.getScannerProperty(PR_PUBLISH_CI_STATUS).map(Boolean::parseBoolean).orElse(true)) {
+            return;
+        }
         Long pipelineId = analysis.getScannerProperty(PULLREQUEST_GITLAB_PIPELINE_ID)
                 .map(Long::parseLong)
                 .orElse(null);
