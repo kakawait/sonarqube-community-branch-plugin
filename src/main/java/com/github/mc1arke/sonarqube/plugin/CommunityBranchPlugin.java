@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2022 Michael Clarke
+ * Copyright (C) 2020-2024 Michael Clarke
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,15 +18,22 @@
  */
 package com.github.mc1arke.sonarqube.plugin;
 
-import com.github.mc1arke.sonarqube.plugin.almclient.DefaultLinkHeaderReader;
+import org.sonar.api.CoreProperties;
+import org.sonar.api.Plugin;
+import org.sonar.api.PropertyType;
+import org.sonar.api.SonarQubeSide;
+import org.sonar.api.config.PropertyDefinition;
+import org.sonar.api.config.PropertyDefinition.ConfigScope;
+import org.sonar.api.rule.Severity;
+import org.sonar.core.config.PurgeConstants;
+import org.sonar.core.extension.CoreExtension;
+
 import com.github.mc1arke.sonarqube.plugin.almclient.azuredevops.DefaultAzureDevopsClientFactory;
 import com.github.mc1arke.sonarqube.plugin.almclient.bitbucket.DefaultBitbucketClientFactory;
 import com.github.mc1arke.sonarqube.plugin.almclient.bitbucket.HttpClientBuilderFactory;
-import com.github.mc1arke.sonarqube.plugin.almclient.github.DefaultGithubClientFactory;
-import com.github.mc1arke.sonarqube.plugin.almclient.github.v3.DefaultUrlConnectionProvider;
-import com.github.mc1arke.sonarqube.plugin.almclient.github.v3.RestApplicationAuthenticationProvider;
-import com.github.mc1arke.sonarqube.plugin.almclient.github.v4.DefaultGraphqlProvider;
+import com.github.mc1arke.sonarqube.plugin.almclient.github.GithubClientFactory;
 import com.github.mc1arke.sonarqube.plugin.almclient.gitlab.DefaultGitlabClientFactory;
+import com.github.mc1arke.sonarqube.plugin.almclient.gitlab.DefaultLinkHeaderReader;
 import com.github.mc1arke.sonarqube.plugin.ce.CommunityReportAnalysisComponentProvider;
 import com.github.mc1arke.sonarqube.plugin.scanner.BranchConfigurationFactory;
 import com.github.mc1arke.sonarqube.plugin.scanner.CommunityBranchConfigurationLoader;
@@ -58,20 +65,11 @@ import com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.pullrequest.Pul
 import com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.pullrequest.action.DeleteAction;
 import com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.pullrequest.action.GitLabReportAction;
 import com.github.mc1arke.sonarqube.plugin.server.pullrequest.ws.pullrequest.action.ListAction;
-import org.sonar.api.CoreProperties;
-import org.sonar.api.Plugin;
-import org.sonar.api.PropertyType;
-import org.sonar.api.SonarQubeSide;
-import org.sonar.api.config.PropertyDefinition;
-import org.sonar.api.resources.Qualifiers;
-import org.sonar.api.rule.Severity;
-import org.sonar.core.config.PurgeConstants;
-import org.sonar.core.extension.CoreExtension;
 
-import static org.sonarqube.ws.Common.RuleType.BUG;
-import static org.sonarqube.ws.Common.RuleType.CODE_SMELL;
-import static org.sonarqube.ws.Common.RuleType.SECURITY_HOTSPOT;
-import static org.sonarqube.ws.Common.RuleType.VULNERABILITY;
+import static org.sonar.api.rules.RuleType.BUG;
+import static org.sonar.api.rules.RuleType.CODE_SMELL;
+import static org.sonar.api.rules.RuleType.SECURITY_HOTSPOT;
+import static org.sonar.api.rules.RuleType.VULNERABILITY;
 
 /**
  * @author Michael Clarke
@@ -109,11 +107,8 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                     PullRequestWs.class,
 
                     GithubValidator.class,
-                    DefaultGraphqlProvider.class,
-                    DefaultGithubClientFactory.class,
+                    GithubClientFactory.class,
                     DefaultLinkHeaderReader.class,
-                    DefaultUrlConnectionProvider.class,
-                    RestApplicationAuthenticationProvider.class,
                     HttpClientBuilderFactory.class,
                     DefaultBitbucketClientFactory.class,
                     BitbucketValidator.class,
@@ -149,7 +144,7 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                                           .subCategory(CoreProperties.SUBCATEGORY_BRANCHES_AND_PULL_REQUESTS)
                                           .multiValues(true)
                                           .defaultValue("main,master,develop,trunk")
-                                          .onQualifiers(Qualifiers.PROJECT)
+                                          .onConfigScopes(ConfigScope.PROJECT)
                                           .index(2)
                                           .build()
 
@@ -162,7 +157,7 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
             context.addExtensions(PropertyDefinition.builder(IMAGE_URL_BASE)
                                           .category(CoreProperties.CATEGORY_GENERAL)
                                           .subCategory(CoreProperties.SUBCATEGORY_GENERAL)
-                                          .onQualifiers(Qualifiers.APP)
+                                          .onConfigScopes(ConfigScope.APP)
                                           .name("Images base URL")
                                           .description("Base URL used to load the images for the PR comments (please use this only if images are not displayed properly).")
                                           .type(PropertyType.STRING)
@@ -173,7 +168,7 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                     .builder(PR_SUMMARY_NOTE_EDIT)
                     .category(getName())
                     .subCategory("GitLab only")
-                    .onQualifiers(Qualifiers.PROJECT)
+                    .onConfigScopes(ConfigScope.PROJECT)
                     .name("Edit summary note")
                     .description(
                             "Edit summary discussion thread instead of resolving it and creating a new one (Gitlab only).")
@@ -184,7 +179,7 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                     .builder(PR_PUBLISH_CI_STATUS)
                     .category(getName())
                     .subCategory("GitLab only")
-                    .onQualifiers(Qualifiers.PROJECT)
+                    .onConfigScopes(ConfigScope.PROJECT)
                     .name("Publish CI status")
                     .description("Toggle publishing CI status (Gitlab only).")
                     .type(PropertyType.BOOLEAN)
@@ -195,7 +190,7 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                     .builder(PR_FILTER_TYPE_EXCLUSION)
                     .category(getName())
                     .subCategory("Filters")
-                    .onQualifiers(Qualifiers.PROJECT)
+                    .onConfigScopes(ConfigScope.PROJECT)
                     .name("RuleType Exclusions")
                     .description(
                             "Comma-separated list of ruletypes you want to exclude, possible values: CODE_SMELL, BUG, VULNERABILITY, SECURITY_HOTSPOT")
@@ -206,7 +201,7 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                     .builder(PR_FILTER_SEVERITY_EXCLUSION)
                     .category(getName())
                     .subCategory("Filters")
-                    .onQualifiers(Qualifiers.PROJECT)
+                    .onConfigScopes(ConfigScope.PROJECT)
                     .name("Severity Exclusions")
                     .description(
                             "Comma-separated list of severity levels you want to exclude, possible values: INFO, MINOR, MAJOR, CRITICAL, BLOCKER")
@@ -217,7 +212,7 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                     .builder(PR_FILTER_MAXAMOUNT)
                     .category(getName())
                     .subCategory("Filters")
-                    .onQualifiers(Qualifiers.PROJECT)
+                    .onConfigScopes(ConfigScope.PROJECT)
                     .name("Max amount")
                     .description("Max amount of comments to be added to the pull request, must be > 0")
                     .type(PropertyType.INTEGER)

@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static com.github.mc1arke.sonarqube.plugin.ce.pullrequest.filter.SeverityComparator.getSeverity;
+
 public class SeverityExclusionFilter implements Predicate<PostAnalysisIssueVisitor.ComponentIssue> {
     private final List<String> exclusions;
 
@@ -27,6 +29,6 @@ public class SeverityExclusionFilter implements Predicate<PostAnalysisIssueVisit
 
     @Override
     public boolean test(PostAnalysisIssueVisitor.ComponentIssue componentIssue) {
-        return !exclusions.contains(componentIssue.getIssue().severity());
+        return !exclusions.contains(getSeverity(componentIssue));
     }
 }

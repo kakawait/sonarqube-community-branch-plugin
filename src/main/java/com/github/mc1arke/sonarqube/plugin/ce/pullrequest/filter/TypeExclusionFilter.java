@@ -28,6 +28,6 @@ public class TypeExclusionFilter implements Predicate<PostAnalysisIssueVisitor.C
 
     @Override
     public boolean test(PostAnalysisIssueVisitor.ComponentIssue componentIssue) {
-        return !exclusions.contains(componentIssue.getIssue().type());
+        return !exclusions.contains(componentIssue.getIssue().getType());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2022 Michael Clarke
+ * Copyright (C) 2021-2024 Michael Clarke
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -51,9 +51,13 @@ public abstract class DiscussionAwarePullRequestDecorator<C, P, U, D, N> impleme
     private static final String RESOLVED_ISSUE_NEEDING_CLOSED_MESSAGE =
             "This issue no longer exists in SonarQube, but due to other comments being present in this discussion, the discussion is not being being closed automatically. " +
                     "Please manually resolve this discussion once the other comments have been reviewed.";
+    private static final String RESOLVED_SUMMARY_NEEDING_CLOSED_MESSAGE =
+            "This summary note is outdated, but due to other comments being present in this discussion, the discussion is not being being removed. " +
+                    "Please manually resolve this discussion once the other comments have been reviewed.";
 
     private static final String VIEW_IN_SONARQUBE_LABEL = "View in SonarQube";
     private static final Pattern NOTE_MARKDOWN_VIEW_LINK_PATTERN = Pattern.compile("^\\[" + VIEW_IN_SONARQUBE_LABEL + "]\\((.*?)\\)$");
+    private static final String DECORATOR_SUMMARY_COMMENT = "decorator-summary-comment";
 
     private final ScmInfoRepository scmInfoRepository;
     private final ReportGenerator reportGenerator;
@@ -168,6 +172,8 @@ public abstract class DiscussionAwarePullRequestDecorator<C, P, U, D, N> impleme
 
     protected abstract void resolveDiscussion(C client, D discussion, P pullRequest);
 
+    protected abstract void deleteDiscussion(C client, D discussion, P pullRequest, List<N> notesForDiscussion);
+
     protected abstract void submitSummaryNote(C client, P pullRequest, AnalysisDetails analysis, AnalysisSummary analysisSummary);
 
     protected abstract void editSummaryNote(C client, P pullRequest, D discussion, AnalysisDetails analysis, AnalysisSummary analysisSummary);
@@ -219,6 +225,13 @@ public abstract class DiscussionAwarePullRequestDecorator<C, P, U, D, N> impleme
                 .collect(Collectors.toList());
     }
 
+    private boolean isSummaryComment(C client, N note) {
+        return Optional.of(note)
+            .flatMap(message -> parseIssueDetails(client, message))
+            .filter(projectIssueIdentifier -> DECORATOR_SUMMARY_COMMENT.equals(projectIssueIdentifier.getIssueKey()))
+            .isPresent();
+    }
+
     private List<String> closeOldDiscussionsAndExtractRemainingKeys(C client, U currentUser,
                                                                     List<Triple<D, N, Optional<ProjectIssueIdentifier>>> sonarqubeComments,
                                                                     List<PostAnalysisIssueVisitor.ComponentIssue> openIssues,
@@ -246,7 +259,9 @@ public abstract class DiscussionAwarePullRequestDecorator<C, P, U, D, N> impleme
             }
 
             String issueKey = noteIdentifier.get().getIssueKey();
-            if (!openIssueKeys.contains(issueKey)) {
+            if (DECORATOR_SUMMARY_COMMENT.equals(issueKey)) {
+                deleteOrPlaceFinalCommentOnDiscussion(client, currentUser, discussion, pullRequest);
+            } else if (!openIssueKeys.contains(issueKey)) {
                 resolveOrPlaceFinalCommentOnDiscussion(client, currentUser, discussion, pullRequest);
             } else {
                 remainingCommentKeys.add(issueKey);
@@ -259,7 +274,8 @@ public abstract class DiscussionAwarePullRequestDecorator<C, P, U, D, N> impleme
     private boolean isResolved(C client, D discussion, List<N> notesInDiscussion, U currentUser) {
         return isClosed(discussion, notesInDiscussion) || notesInDiscussion.stream()
                 .filter(message -> isNoteFromCurrentUser(message, currentUser))
-                .anyMatch(message -> RESOLVED_ISSUE_NEEDING_CLOSED_MESSAGE.equals(getNoteContent(client, message)));
+                .map(message -> getNoteContent(client, message))
+                .anyMatch(content -> RESOLVED_ISSUE_NEEDING_CLOSED_MESSAGE.equals(content) || RESOLVED_SUMMARY_NEEDING_CLOSED_MESSAGE.equals(content));
     }
 
     private void resolveOrPlaceFinalCommentOnDiscussion(C client, U currentUser, D discussion, P pullRequest) {
@@ -273,12 +289,28 @@ public abstract class DiscussionAwarePullRequestDecorator<C, P, U, D, N> impleme
 
     }
 
+    private void deleteOrPlaceFinalCommentOnDiscussion(C client, U currentUser, D discussion, P pullRequest) {
+        List<N> notesForDiscussion = getNotesForDiscussion(client, discussion);
+        if (notesForDiscussion.stream()
+            .filter(this::isUserNote)
+            .anyMatch(note -> !isNoteFromCurrentUser(note, currentUser))) {
+            addNoteToDiscussion(client, discussion, pullRequest, RESOLVED_SUMMARY_NEEDING_CLOSED_MESSAGE);
+        } else {
+            deleteDiscussion(client, discussion, pullRequest, notesForDiscussion);
+        }
+
+    }
+
     protected Optional<ProjectIssueIdentifier> parseIssueDetails(C client, N note) {
         return parseIssueDetails(client, note, VIEW_IN_SONARQUBE_LABEL, NOTE_MARKDOWN_VIEW_LINK_PATTERN);
     }
 
     protected Optional<ProjectIssueIdentifier> parseIssueDetails(C client, N note, String label, Pattern pattern) {
-        try (BufferedReader reader = new BufferedReader(new StringReader(getNoteContent(client, note)))) {
+        String noteContent = getNoteContent(client, note);
+        if (noteContent == null) {
+            return Optional.empty();
+        }
+        try (BufferedReader reader = new BufferedReader(new StringReader(noteContent))) {
             return reader.lines()
                     .filter(line -> line.contains(label))
                     .map(line -> parseIssueLineDetails(line, pattern))
@@ -315,7 +347,7 @@ public abstract class DiscussionAwarePullRequestDecorator<C, P, U, D, N> impleme
         String projectId = optionalProjectId.get();
 
         if (url.getPath().endsWith("/dashboard")) {
-            return Optional.of(new ProjectIssueIdentifier(projectId, ProjectIssueIdentifier.SUMMARY_NOTE_ISSUE_KEY));
+            return Optional.of(new ProjectIssueIdentifier(projectId, DECORATOR_SUMMARY_COMMENT));
         } else if (url.getPath().endsWith("security_hotspots")) {
             return parameters.stream()
                     .filter(parameter -> "hotspots".equals(parameter.getName()))
