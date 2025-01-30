@@ -80,6 +80,7 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
 
     public static final String IMAGE_URL_BASE = "com.github.mc1arke.sonarqube.plugin.branch.image-url-base";
     public static final String PR_SUMMARY_NOTE_EDIT = "com.github.mc1arke.sonarqube.plugin.branch.pullrequest.summary.edit";
+    public static final String PR_PUBLISH_CI_STATUS = "com.github.mc1arke.sonarqube.plugin.branch.pullrequest.publish.ci.status";
     public static final String PR_FILTER_TYPE_EXCLUSION = "com.github.mc1arke.sonarqube.plugin.branch.filter.type.exclusions";
     public static final String PR_FILTER_SEVERITY_EXCLUSION = "com.github.mc1arke.sonarqube.plugin.branch.filter.severity.exclusions";
     public static final String PR_FILTER_MAXAMOUNT = "com.github.mc1arke.sonarqube.plugin.branch.filter.maxamount";
@@ -171,13 +172,23 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
             PropertyDefinition editSummaryProperty = PropertyDefinition
                     .builder(PR_SUMMARY_NOTE_EDIT)
                     .category(getName())
-                    .subCategory("Merge Request Decoration")
+                    .subCategory("GitLab only")
                     .onQualifiers(Qualifiers.PROJECT)
-                    .name("Edit editSummaryProperty note")
+                    .name("Edit summary note")
                     .description(
-                            "Edit editSummaryProperty discussion thread instead of resolving it and creating a new one (Gitlab only).")
+                            "Edit summary discussion thread instead of resolving it and creating a new one (Gitlab only).")
                     .type(PropertyType.BOOLEAN)
                     .defaultValue(String.valueOf(false))
+                    .build();
+            PropertyDefinition publishCiStatusProperty = PropertyDefinition
+                    .builder(PR_PUBLISH_CI_STATUS)
+                    .category(getName())
+                    .subCategory("GitLab only")
+                    .onQualifiers(Qualifiers.PROJECT)
+                    .name("Publish CI status")
+                    .description("Toggle publishing CI status (Gitlab only).")
+                    .type(PropertyType.BOOLEAN)
+                    .defaultValue(String.valueOf(true))
                     .build();
 
             PropertyDefinition typeFilterProperty = PropertyDefinition
@@ -212,7 +223,8 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                     .type(PropertyType.INTEGER)
                     .build();
 
-            context.addExtensions(editSummaryProperty, typeFilterProperty, severityFilterProperty, maxFilterProperty);
+            context.addExtensions(editSummaryProperty, publishCiStatusProperty, typeFilterProperty,
+                    severityFilterProperty, maxFilterProperty);
         }
     }
 
