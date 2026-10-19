@@ -71,6 +71,7 @@ import org.sonar.core.extension.CoreExtension;
 public class CommunityBranchPlugin implements Plugin, CoreExtension {
 
     public static final String IMAGE_URL_BASE = "com.github.mc1arke.sonarqube.plugin.branch.image-url-base";
+    public static final String PR_PUBLISH_CI_STATUS = "com.github.mc1arke.sonarqube.plugin.branch.pullrequest.publish.ci.status";
 
     @Override
     public String getName() {
@@ -152,6 +153,15 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                                           .name("Images base URL")
                                           .description("Base URL used to load the images for the PR comments (please use this only if images are not displayed properly).")
                                           .type(PropertyType.STRING)
+                                          .build(),
+                                  PropertyDefinition.builder(PR_PUBLISH_CI_STATUS)
+                                          .category(getName())
+                                          .subCategory("GitLab only")
+                                          .onConfigScopes(ConfigScope.APP)
+                                          .name("Publish CI status")
+                                          .description("Toggle publishing the SonarQube pipeline status to GitLab merge requests (Gitlab only).")
+                                          .type(PropertyType.BOOLEAN)
+                                          .defaultValue(String.valueOf(true))
                                           .build(),
                 MonoRepoFeature.class);
 

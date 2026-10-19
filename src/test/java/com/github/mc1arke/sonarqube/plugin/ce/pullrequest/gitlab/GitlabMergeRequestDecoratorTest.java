@@ -42,6 +42,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.sonar.api.ce.posttask.QualityGate;
+import org.sonar.api.config.Configuration;
 import org.sonar.api.issue.IssueStatus;
 import org.sonar.ce.task.projectanalysis.component.Component;
 import org.sonar.ce.task.projectanalysis.scm.Changeset;
@@ -51,6 +52,7 @@ import org.sonar.db.alm.setting.ALM;
 import org.sonar.db.alm.setting.AlmSettingDto;
 import org.sonar.db.alm.setting.ProjectAlmSettingDto;
 
+import com.github.mc1arke.sonarqube.plugin.CommunityBranchPlugin;
 import com.github.mc1arke.sonarqube.plugin.almclient.gitlab.GitlabClient;
 import com.github.mc1arke.sonarqube.plugin.almclient.gitlab.GitlabClientFactory;
 import com.github.mc1arke.sonarqube.plugin.almclient.gitlab.model.Commit;
@@ -99,8 +101,9 @@ class GitlabMergeRequestDecoratorTest {
     private final ReportGenerator reportGenerator = mock();
     private final MarkdownFormatterFactory markdownFormatterFactory = mock();
     private final AnalysisSummary analysisSummary = mock();
+    private final Configuration configuration = mock();
 
-    private final GitlabMergeRequestDecorator underTest = new GitlabMergeRequestDecorator(scmInfoRepository, gitlabClientFactory, reportGenerator, markdownFormatterFactory);
+    private final GitlabMergeRequestDecorator underTest = new GitlabMergeRequestDecorator(scmInfoRepository, gitlabClientFactory, reportGenerator, markdownFormatterFactory, configuration);
 
     @BeforeEach
     void setUp() throws IOException {
@@ -647,6 +650,20 @@ class GitlabMergeRequestDecoratorTest {
                 .usingRecursiveComparison()
                 .isEqualTo(new PipelineStatus("SonarQube", "SonarQube Status",
                         PipelineStatus.State.FAILED, "https://sonarqube2.dummy/dashboard?id=" + PROJECT_KEY + "&pullRequest=" + MERGE_REQUEST_IID, BigDecimal.TEN, 11L));
+    }
+
+    @Test
+    void shouldNotSubmitPipelineStatusWhenPublishingCiStatusIsDisabled() throws IOException {
+        when(configuration.getBoolean(CommunityBranchPlugin.PR_PUBLISH_CI_STATUS)).thenReturn(Optional.of(false));
+        when(analysisDetails.getQualityGateStatus()).thenReturn(QualityGate.Status.OK);
+        when(analysisDetails.getCommitSha()).thenReturn("commitsha");
+        Discussion discussion = mock();
+        when(discussion.getId()).thenReturn("dicussion id");
+        when(gitlabClient.addMergeRequestDiscussion(anyLong(), anyLong(), any())).thenReturn(discussion);
+
+        underTest.decorateQualityGateStatus(analysisDetails, almSettingDto, projectAlmSettingDto);
+
+        verify(gitlabClient, never()).setMergeRequestPipelineStatus(anyLong(), any(), any());
     }
 
     @Test

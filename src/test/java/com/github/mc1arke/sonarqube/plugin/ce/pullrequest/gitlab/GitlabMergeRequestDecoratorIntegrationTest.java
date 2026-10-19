@@ -265,7 +265,7 @@ class GitlabMergeRequestDecoratorIntegrationTest {
         Encryption encryption = mock();
         when(settings.getEncryption()).thenReturn(encryption);
         GitlabMergeRequestDecorator pullRequestDecorator =
-                new GitlabMergeRequestDecorator(scmInfoRepository, new DefaultGitlabClientFactory(linkHeaderReader, settings), reportGenerator, mock());
+                new GitlabMergeRequestDecorator(scmInfoRepository, new DefaultGitlabClientFactory(linkHeaderReader, settings), reportGenerator, mock(), mock());
 
 
         assertThat(pullRequestDecorator.decorateQualityGateStatus(analysisDetails, almSettingDto, projectAlmSettingDto).getPullRequestUrl()).isEqualTo(Optional.of("http://gitlab.example.com/my-group/my-project/merge_requests/1"));
