@@ -11,6 +11,8 @@ import javax.annotation.Nullable;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.sonar.api.issue.IssueStatus;
+import org.sonar.api.issue.impact.Severity;
+import org.sonar.api.issue.impact.SoftwareQuality;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
@@ -93,9 +95,19 @@ public class GitLabReportAction extends ProjectWsAction {
         writer.prop("check_name", getCheckName(dbSession, ruleDao, issue.getRuleKey()));
         writer.prop("fingerprint", DigestUtils.md5Hex(issue.getKey()));
         writer.prop("description", issue.getMessage());
-        writer.prop("severity", issue.getSeverity().toLowerCase());
+        writer.prop("severity", toGitlabSeverity(issue));
         buildLocation(issue, writer, pathPrefix);
         writer.endObject();
+    }
+
+    private static String toGitlabSeverity(IssueDto issue) {
+        Map<SoftwareQuality, Severity> impacts = issue.getEffectiveImpacts();
+        // a CRITICAL issue whose only HIGH-or-worse impact is maintainability is reported as major
+        boolean maintainabilityHighOnly = impacts.get(SoftwareQuality.MAINTAINABILITY) == Severity.HIGH
+                && impacts.entrySet().stream().noneMatch(e -> e.getKey() != SoftwareQuality.MAINTAINABILITY
+                && (e.getValue() == Severity.HIGH || e.getValue() == Severity.BLOCKER));
+        String severity = issue.getSeverity();
+        return "CRITICAL".equals(severity) && maintainabilityHighOnly ? "major" : severity.toLowerCase();
     }
 
     private void buildLocation(IssueDto issue, JsonWriter jsonWriter, String pathPrefix) {

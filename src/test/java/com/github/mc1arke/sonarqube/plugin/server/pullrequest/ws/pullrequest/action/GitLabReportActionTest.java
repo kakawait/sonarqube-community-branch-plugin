@@ -16,6 +16,8 @@ import java.util.Set;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.Test;
 import org.sonar.api.issue.IssueStatus;
+import org.sonar.api.issue.impact.Severity;
+import org.sonar.api.issue.impact.SoftwareQuality;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
@@ -25,6 +27,7 @@ import org.sonar.db.DbClient;
 import org.sonar.db.component.BranchDao;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.BranchType;
+import org.sonar.db.issue.ImpactDto;
 import org.sonar.db.issue.IssueDao;
 import org.sonar.db.issue.IssueDto;
 import org.sonar.db.permission.ProjectPermission;
@@ -62,17 +65,30 @@ class GitLabReportActionTest {
 
     @Test
     void shouldWriteOnlyOpenIssuesInGitLabCodeClimateFormatWithoutPathPrefix() {
-        assertThat(writeReport(null)).isEqualTo(expectedReport("src/Foo.java"));
+        assertThat(writeReport(null, "MINOR")).isEqualTo(expectedReport("src/Foo.java", "minor"));
     }
 
     @Test
     void shouldPrefixPathsWithNormalisedPathPrefix() {
-        assertThat(writeReport("/back/")).isEqualTo(expectedReport("back/src/Foo.java"));
+        assertThat(writeReport("/back/", "MINOR")).isEqualTo(expectedReport("back/src/Foo.java", "minor"));
     }
 
     @Test
     void shouldIgnoreBlankPathPrefix() {
-        assertThat(writeReport("/")).isEqualTo(expectedReport("src/Foo.java"));
+        assertThat(writeReport("/", "MINOR")).isEqualTo(expectedReport("src/Foo.java", "minor"));
+    }
+
+    @Test
+    void shouldReportCriticalIssueWithOnlyHighMaintainabilityImpactAsMajor() {
+        assertThat(writeReport(null, "CRITICAL", new ImpactDto(SoftwareQuality.MAINTAINABILITY, Severity.HIGH)))
+                .isEqualTo(expectedReport("src/Foo.java", "major"));
+    }
+
+    @Test
+    void shouldKeepCriticalSeverityWhenAnotherQualityIsHigh() {
+        assertThat(writeReport(null, "CRITICAL", new ImpactDto(SoftwareQuality.MAINTAINABILITY, Severity.HIGH),
+                new ImpactDto(SoftwareQuality.SECURITY, Severity.HIGH)))
+                .isEqualTo(expectedReport("src/Foo.java", "critical"));
     }
 
     @Test
@@ -94,7 +110,7 @@ class GitLabReportActionTest {
                 .hasMessage("Pull request '123' is not found for project 'projectKey'");
     }
 
-    private String writeReport(String pathPrefix) {
+    private String writeReport(String pathPrefix, String severity, ImpactDto... impacts) {
         when(componentFinder.getProjectByKey(any(), eq("projectKey")))
                 .thenReturn(new ProjectDto().setKey("projectKey").setUuid("projectUuid"));
         when(userSession.hasEntityPermission(any(ProjectPermission.class), any(ProjectDto.class))).thenReturn(true);
@@ -108,7 +124,8 @@ class GitLabReportActionTest {
         when(dbClient.issueDao()).thenReturn(issueDao);
         when(issueDao.selectIssueKeysByComponentUuid(any(), eq("prUuid"))).thenReturn(Set.of("open", "closed"));
         IssueDto openIssue = new IssueDto().setKee("open").setRuleKey("java", "S1481").setStatus(IssueStatus.OPEN.name())
-                .setSeverity("MINOR").setMessage("Remove this unused variable").setFilePath("src/Foo.java").setLine(3);
+                .setSeverity(severity).setMessage("Remove this unused variable").setFilePath("src/Foo.java").setLine(3);
+        openIssue.replaceAllImpacts(List.of(impacts));
         IssueDto closedIssue = new IssueDto().setKee("closed").setRuleKey("java", "S1481").setStatus(IssueStatus.FIXED.name())
                 .setSeverity("MINOR").setMessage("Fixed").setFilePath("src/Foo.java").setLine(4);
         when(issueDao.selectByKeys(any(), any())).thenReturn(List.of(openIssue, closedIssue));
@@ -130,11 +147,11 @@ class GitLabReportActionTest {
         return body.toString();
     }
 
-    private static String expectedReport(String path) {
+    private static String expectedReport(String path, String severity) {
         return "[{\"check_name\":\"unused-local-variable\","
                 + "\"fingerprint\":\"" + DigestUtils.md5Hex("open") + "\","
                 + "\"description\":\"Remove this unused variable\","
-                + "\"severity\":\"minor\","
+                + "\"severity\":\"" + severity + "\","
                 + "\"location\":{\"path\":\"" + path + "\",\"lines\":{\"begin\":3,\"end\":3}}}]";
     }
 }
