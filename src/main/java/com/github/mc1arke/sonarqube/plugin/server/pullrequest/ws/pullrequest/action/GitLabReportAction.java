@@ -6,7 +6,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.annotation.Nullable;
+
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.sonar.api.issue.IssueStatus;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.server.ws.Request;
@@ -29,6 +32,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class GitLabReportAction extends ProjectWsAction {
 
     private static final String PULL_REQUEST_PARAMETER = "pullRequest";
+    private static final String PATH_PREFIX_PARAMETER = "pathPrefix";
 
     private static final Map<String, String> ruleKeyToCheckName = new ConcurrentHashMap<>();
 
@@ -43,6 +47,8 @@ public class GitLabReportAction extends ProjectWsAction {
     @Override
     protected void configureAction(WebService.NewAction action) {
         action.createParam(PULL_REQUEST_PARAMETER).setRequired(true);
+        action.createParam(PATH_PREFIX_PARAMETER)
+                .setDescription("Prefix added to every path, e.g. the monorepo sub-project directory relative to the repository root");
     }
 
     @Override
@@ -50,6 +56,7 @@ public class GitLabReportAction extends ProjectWsAction {
         checkPermission(project, userSession);
 
         String pullRequestId = request.mandatoryParam(PULL_REQUEST_PARAMETER);
+        String pathPrefix = normalisePathPrefix(request.param(PATH_PREFIX_PARAMETER));
 
         BranchDto pullRequest = getDbClient()
                 .branchDao()
@@ -70,25 +77,30 @@ public class GitLabReportAction extends ProjectWsAction {
                 .selectByKeys(dbSession, issueKeys)
                 .stream()
                 .filter(i -> i.getIssueStatus() == IssueStatus.OPEN)
-                .forEach(i -> buildGitLabIssue(dbSession, i, ruleDao, writer));
+                .forEach(i -> buildGitLabIssue(dbSession, i, ruleDao, writer, pathPrefix));
         writer.endArray();
         writer.close();
     }
 
-    private void buildGitLabIssue(DbSession dbSession, IssueDto issue, RuleDao ruleDao, JsonWriter writer) {
+    private static String normalisePathPrefix(@Nullable String pathPrefix) {
+        String prefix = StringUtils.strip(pathPrefix, "/");
+        return StringUtils.isEmpty(prefix) ? "" : prefix + "/";
+    }
+
+    private void buildGitLabIssue(DbSession dbSession, IssueDto issue, RuleDao ruleDao, JsonWriter writer, String pathPrefix) {
         writer.beginObject();
         // https://docs.gitlab.com/ee/ci/testing/code_quality.html#implement-a-custom-tool
         writer.prop("check_name", getCheckName(dbSession, ruleDao, issue.getRuleKey()));
         writer.prop("fingerprint", DigestUtils.md5Hex(issue.getKey()));
         writer.prop("description", issue.getMessage());
         writer.prop("severity", issue.getSeverity().toLowerCase());
-        buildLocation(issue, writer);
+        buildLocation(issue, writer, pathPrefix);
         writer.endObject();
     }
 
-    private void buildLocation(IssueDto issue, JsonWriter jsonWriter) {
+    private void buildLocation(IssueDto issue, JsonWriter jsonWriter, String pathPrefix) {
         jsonWriter.name("location").beginObject();
-        jsonWriter.prop("path", issue.getFilePath());
+        jsonWriter.prop("path", pathPrefix + issue.getFilePath());
         jsonWriter.name("lines").beginObject();
         jsonWriter.prop("begin", issue.getLine());
         jsonWriter.prop("end", issue.getLine());

@@ -43,7 +43,7 @@ class GitLabReportActionTest {
     private final GitLabReportAction underTest = new GitLabReportAction(dbClient, componentFinder, userSession);
 
     @Test
-    void shouldDefineEndpointWithPullRequestParameter() {
+    void shouldDefineEndpointWithPullRequestAndPathPrefixParameters() {
         WebService.NewController controller = mock();
         WebService.NewAction action = mock();
         WebService.NewParam projectParam = mock();
@@ -56,11 +56,45 @@ class GitLabReportActionTest {
 
         verify(controller).createAction("gitlab_report");
         verify(action).createParam("pullRequest");
+        verify(action).createParam("pathPrefix");
         verify(pullRequestParam).setRequired(true);
     }
 
     @Test
-    void shouldWriteOnlyOpenIssuesInGitLabCodeClimateFormat() {
+    void shouldWriteOnlyOpenIssuesInGitLabCodeClimateFormatWithoutPathPrefix() {
+        assertThat(writeReport(null)).isEqualTo(expectedReport("src/Foo.java"));
+    }
+
+    @Test
+    void shouldPrefixPathsWithNormalisedPathPrefix() {
+        assertThat(writeReport("/back/")).isEqualTo(expectedReport("back/src/Foo.java"));
+    }
+
+    @Test
+    void shouldIgnoreBlankPathPrefix() {
+        assertThat(writeReport("/")).isEqualTo(expectedReport("src/Foo.java"));
+    }
+
+    @Test
+    void shouldThrowNotFoundWhenPullRequestDoesNotExist() {
+        when(componentFinder.getProjectByKey(any(), eq("projectKey")))
+                .thenReturn(new ProjectDto().setKey("projectKey").setUuid("projectUuid"));
+        when(userSession.hasEntityPermission(any(ProjectPermission.class), any(ProjectDto.class))).thenReturn(true);
+
+        BranchDao branchDao = mock();
+        when(dbClient.branchDao()).thenReturn(branchDao);
+        when(branchDao.selectByPullRequestKey(any(), any(), any())).thenReturn(Optional.empty());
+
+        Request request = mock();
+        when(request.mandatoryParam("project")).thenReturn("projectKey");
+        when(request.mandatoryParam("pullRequest")).thenReturn("123");
+
+        assertThatThrownBy(() -> underTest.handle(request, mock()))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("Pull request '123' is not found for project 'projectKey'");
+    }
+
+    private String writeReport(String pathPrefix) {
         when(componentFinder.getProjectByKey(any(), eq("projectKey")))
                 .thenReturn(new ProjectDto().setKey("projectKey").setUuid("projectUuid"));
         when(userSession.hasEntityPermission(any(ProjectPermission.class), any(ProjectDto.class))).thenReturn(true);
@@ -86,35 +120,21 @@ class GitLabReportActionTest {
         Request request = mock();
         when(request.mandatoryParam("project")).thenReturn("projectKey");
         when(request.mandatoryParam("pullRequest")).thenReturn("123");
+        when(request.param("pathPrefix")).thenReturn(pathPrefix);
         StringWriter body = new StringWriter();
         Response response = mock();
         when(response.newJsonWriter()).thenReturn(JsonWriter.of(body));
 
         underTest.handle(request, response);
 
-        assertThat(body.toString()).isEqualTo("[{\"check_name\":\"unused-local-variable\","
+        return body.toString();
+    }
+
+    private static String expectedReport(String path) {
+        return "[{\"check_name\":\"unused-local-variable\","
                 + "\"fingerprint\":\"" + DigestUtils.md5Hex("open") + "\","
                 + "\"description\":\"Remove this unused variable\","
                 + "\"severity\":\"minor\","
-                + "\"location\":{\"path\":\"src/Foo.java\",\"lines\":{\"begin\":3,\"end\":3}}}]");
-    }
-
-    @Test
-    void shouldThrowNotFoundWhenPullRequestDoesNotExist() {
-        when(componentFinder.getProjectByKey(any(), eq("projectKey")))
-                .thenReturn(new ProjectDto().setKey("projectKey").setUuid("projectUuid"));
-        when(userSession.hasEntityPermission(any(ProjectPermission.class), any(ProjectDto.class))).thenReturn(true);
-
-        BranchDao branchDao = mock();
-        when(dbClient.branchDao()).thenReturn(branchDao);
-        when(branchDao.selectByPullRequestKey(any(), any(), any())).thenReturn(Optional.empty());
-
-        Request request = mock();
-        when(request.mandatoryParam("project")).thenReturn("projectKey");
-        when(request.mandatoryParam("pullRequest")).thenReturn("123");
-
-        assertThatThrownBy(() -> underTest.handle(request, mock()))
-                .isInstanceOf(NotFoundException.class)
-                .hasMessage("Pull request '123' is not found for project 'projectKey'");
+                + "\"location\":{\"path\":\"" + path + "\",\"lines\":{\"begin\":3,\"end\":3}}}]";
     }
 }
