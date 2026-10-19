@@ -763,6 +763,49 @@ class GitlabMergeRequestDecoratorTest {
     }
 
     @Test
+    void shouldEditExistingSummaryCommentInsteadOfPostingNewOneWhenEnabled() throws IOException {
+        when(analysisDetails.getScannerProperty(CommunityBranchPlugin.PR_SUMMARY_NOTE_EDIT)).thenReturn(Optional.of("true"));
+        Note note = mock();
+        when(note.getId()).thenReturn(101L);
+        when(note.getAuthor()).thenReturn(sonarqubeUser);
+        when(note.getBody()).thenReturn("Summary comment" + System.lineSeparator() + "[View in SonarQube](http://host.domain/dashboard?id=projectKey&pullRequest=123)");
+        when(note.isSystem()).thenReturn(false);
+
+        Discussion discussion = mock();
+        when(discussion.getId()).thenReturn("discussionId");
+        when(discussion.getNotes()).thenReturn(Collections.singletonList(note));
+        when(gitlabClient.getMergeRequestDiscussions(anyLong(), anyLong())).thenReturn(Collections.singletonList(discussion));
+
+        underTest.decorateQualityGateStatus(analysisDetails, almSettingDto, projectAlmSettingDto);
+
+        verify(gitlabClient).editMergeRequestDiscussionNote(PROJECT_ID, MERGE_REQUEST_IID, "discussionId", 101, "Summary Comment");
+        verify(gitlabClient, never()).deleteMergeRequestDiscussionNote(anyLong(), anyLong(), any(), anyLong());
+        verify(gitlabClient, never()).addMergeRequestDiscussion(anyLong(), anyLong(), any());
+    }
+
+    @Test
+    void shouldReopenEditedSummaryCommentWhenQualityGateFails() throws IOException {
+        when(analysisDetails.getScannerProperty(CommunityBranchPlugin.PR_SUMMARY_NOTE_EDIT)).thenReturn(Optional.of("true"));
+        when(analysisDetails.getQualityGateStatus()).thenReturn(QualityGate.Status.ERROR);
+        Note note = mock();
+        when(note.getId()).thenReturn(101L);
+        when(note.getAuthor()).thenReturn(sonarqubeUser);
+        when(note.getBody()).thenReturn("Summary comment" + System.lineSeparator() + "[View in SonarQube](http://host.domain/dashboard?id=projectKey&pullRequest=123)");
+        when(note.isSystem()).thenReturn(false);
+        when(note.isResolved()).thenReturn(true);
+
+        Discussion discussion = mock();
+        when(discussion.getId()).thenReturn("discussionId");
+        when(discussion.getNotes()).thenReturn(Collections.singletonList(note));
+        when(gitlabClient.getMergeRequestDiscussions(anyLong(), anyLong())).thenReturn(Collections.singletonList(discussion));
+
+        underTest.decorateQualityGateStatus(analysisDetails, almSettingDto, projectAlmSettingDto);
+
+        verify(gitlabClient).editMergeRequestDiscussionNote(PROJECT_ID, MERGE_REQUEST_IID, "discussionId", 101, "Summary Comment");
+        verify(gitlabClient).unresolveMergeRequestDiscussion(PROJECT_ID, MERGE_REQUEST_IID, "discussionId");
+    }
+
+    @Test
     void shouldAddNoteToSummaryCommentThreadIfOtherCommentsInDiscussion() throws IOException {
         Note note = mock();
         when(note.getId()).thenReturn(101L);

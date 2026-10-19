@@ -117,7 +117,7 @@ class CommunityBranchPluginTest {
         testCase.load(context);
 
         verify(context).addExtensions(CommunityReportAnalysisComponentProvider.class);
-        verify(context).addExtensions(any(PropertyDefinition.class), any(PropertyDefinition.class), any(PropertyDefinition.class), eq(MonoRepoFeature.class));
+        verify(context).addExtensions(any(PropertyDefinition.class), any(PropertyDefinition.class), any(PropertyDefinition.class), any(PropertyDefinition.class), eq(MonoRepoFeature.class));
     }
 
 
@@ -159,7 +159,7 @@ class CommunityBranchPluginTest {
                 any(PropertyDefinition.class),
                 any(PropertyDefinition.class));
 
-        verify(context).addExtensions(any(PropertyDefinition.class), any(PropertyDefinition.class), any(PropertyDefinition.class), eq(MonoRepoFeature.class));
+        verify(context).addExtensions(any(PropertyDefinition.class), any(PropertyDefinition.class), any(PropertyDefinition.class), any(PropertyDefinition.class), eq(MonoRepoFeature.class));
     }
 
     @Test

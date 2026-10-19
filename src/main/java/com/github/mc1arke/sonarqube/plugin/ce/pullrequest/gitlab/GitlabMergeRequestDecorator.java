@@ -76,6 +76,13 @@ public class GitlabMergeRequestDecorator extends DiscussionAwarePullRequestDecor
     }
 
     @Override
+    protected boolean isEditSummaryNoteEnabled(AnalysisDetails analysis) {
+        return analysis.getScannerProperty(CommunityBranchPlugin.PR_SUMMARY_NOTE_EDIT)
+                .map(Boolean::parseBoolean)
+                .orElse(false);
+    }
+
+    @Override
     protected GitlabClient createClient(AlmSettingDto almSettingDto, ProjectAlmSettingDto projectAlmSettingDto) {
         return gitlabClientFactory.createClient(projectAlmSettingDto, almSettingDto);
     }
@@ -179,6 +186,26 @@ public class GitlabMergeRequestDecorator extends DiscussionAwarePullRequestDecor
             throw new IllegalStateException("Could not submit summary comment to Gitlab", ex);
         }
 
+    }
+
+    @Override
+    protected void editSummaryNote(GitlabClient client, MergeRequest mergeRequest, Discussion discussion, AnalysisDetails analysis, AnalysisSummary analysisSummary) {
+        try {
+            client.editMergeRequestDiscussionNote(mergeRequest.getTargetProjectId(),
+                    mergeRequest.getIid(),
+                    discussion.getId(),
+                    discussion.getNotes().get(0).getId(),
+                    analysisSummary.format(formatterFactory));
+            boolean passed = analysis.getQualityGateStatus() == QualityGate.Status.OK;
+            boolean closed = isClosed(discussion, discussion.getNotes());
+            if (passed && !closed) {
+                client.resolveMergeRequestDiscussion(mergeRequest.getTargetProjectId(), mergeRequest.getIid(), discussion.getId());
+            } else if (!passed && closed) {
+                client.unresolveMergeRequestDiscussion(mergeRequest.getTargetProjectId(), mergeRequest.getIid(), discussion.getId());
+            }
+        } catch (IOException ex) {
+            throw new IllegalStateException("Could not edit summary comment to Gitlab", ex);
+        }
     }
 
     @Override

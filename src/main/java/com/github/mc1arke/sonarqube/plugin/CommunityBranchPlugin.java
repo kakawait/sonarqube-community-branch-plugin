@@ -74,6 +74,7 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
     public static final String IMAGE_URL_BASE = "com.github.mc1arke.sonarqube.plugin.branch.image-url-base";
     public static final String PR_PUBLISH_CI_STATUS = "com.github.mc1arke.sonarqube.plugin.branch.pullrequest.publish.ci.status";
     public static final String PR_ISSUE_COMMENTS_ENABLED = "com.github.mc1arke.sonarqube.plugin.branch.pullrequest.issue.comments.enabled";
+    public static final String PR_SUMMARY_NOTE_EDIT = "com.github.mc1arke.sonarqube.plugin.branch.pullrequest.summary.edit";
 
     @Override
     public String getName() {
@@ -173,6 +174,14 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                                           .description("Post one comment per issue on pull requests. Disable to rely on the summary and the GitLab Code Quality report only.")
                                           .type(PropertyType.BOOLEAN)
                                           .defaultValue(String.valueOf(true))
+                                          .build(),
+                                  PropertyDefinition.builder(PR_SUMMARY_NOTE_EDIT)
+                                          .category(getName())
+                                          .onConfigScopes(ConfigScope.PROJECT)
+                                          .name("Edit summary note")
+                                          .description("Edit the summary comment on each analysis instead of deleting it and posting a new one (Gitlab only).")
+                                          .type(PropertyType.BOOLEAN)
+                                          .defaultValue(String.valueOf(false))
                                           .build(),
                 MonoRepoFeature.class);
 

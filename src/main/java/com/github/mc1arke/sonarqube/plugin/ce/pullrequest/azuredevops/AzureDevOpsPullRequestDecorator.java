@@ -208,6 +208,11 @@ public class AzureDevOpsPullRequestDecorator extends DiscussionAwarePullRequestD
         }
     }
 
+    @Override
+    protected void editSummaryNote(AzureDevopsClient client, PullRequest pullRequest, CommentThread discussion, AnalysisDetails analysis, AnalysisSummary analysisSummary) {
+        // not implemented, summary editing is disabled for Azure DevOps
+    }
+
     protected List<CommentThread> getDiscussions(AzureDevopsClient client, PullRequest pullRequest) {
         try {
             return client.retrieveThreads(pullRequest.getRepository().getProject().getName(), pullRequest.getRepository().getName(), pullRequest.getId());
