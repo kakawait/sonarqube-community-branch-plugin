@@ -18,6 +18,7 @@
  */
 package com.github.mc1arke.sonarqube.plugin.ce.pullrequest;
 
+import com.github.mc1arke.sonarqube.plugin.CommunityBranchPlugin;
 import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.report.AnalysisIssueSummary;
 import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.report.AnalysisSummary;
 import com.github.mc1arke.sonarqube.plugin.ce.pullrequest.report.ReportGenerator;
@@ -73,7 +74,10 @@ public abstract class DiscussionAwarePullRequestDecorator<C, P, U, D, N> impleme
         
         P pullRequest = getPullRequest(client, almSettingDto, projectAlmSettingDto, analysis);
 
-        if (isInlineCommentsEnabled(projectAlmSettingDto)) {
+        boolean issueCommentsEnabled = analysis.getScannerProperty(CommunityBranchPlugin.PR_ISSUE_COMMENTS_ENABLED)
+                .map(Boolean::parseBoolean)
+                .orElse(true);
+        if (isInlineCommentsEnabled(projectAlmSettingDto) && issueCommentsEnabled) {
             U user = getCurrentUser(client);
 
             List<PostAnalysisIssueVisitor.ComponentIssue> openSonarqubeIssues = analysis.getScmReportableIssues();

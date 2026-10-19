@@ -73,6 +73,7 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
 
     public static final String IMAGE_URL_BASE = "com.github.mc1arke.sonarqube.plugin.branch.image-url-base";
     public static final String PR_PUBLISH_CI_STATUS = "com.github.mc1arke.sonarqube.plugin.branch.pullrequest.publish.ci.status";
+    public static final String PR_ISSUE_COMMENTS_ENABLED = "com.github.mc1arke.sonarqube.plugin.branch.pullrequest.issue.comments.enabled";
 
     @Override
     public String getName() {
@@ -162,6 +163,14 @@ public class CommunityBranchPlugin implements Plugin, CoreExtension {
                                           .onConfigScopes(ConfigScope.APP)
                                           .name("Publish CI status")
                                           .description("Toggle publishing the SonarQube pipeline status to GitLab merge requests (Gitlab only).")
+                                          .type(PropertyType.BOOLEAN)
+                                          .defaultValue(String.valueOf(true))
+                                          .build(),
+                                  PropertyDefinition.builder(PR_ISSUE_COMMENTS_ENABLED)
+                                          .category(getName())
+                                          .onConfigScopes(ConfigScope.PROJECT)
+                                          .name("Issue comments")
+                                          .description("Post one comment per issue on pull requests. Disable to rely on the summary and the GitLab Code Quality report only.")
                                           .type(PropertyType.BOOLEAN)
                                           .defaultValue(String.valueOf(true))
                                           .build(),

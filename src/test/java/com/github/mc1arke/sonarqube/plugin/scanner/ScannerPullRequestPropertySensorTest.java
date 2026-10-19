@@ -18,11 +18,14 @@
  */
 package com.github.mc1arke.sonarqube.plugin.scanner;
 
+import com.github.mc1arke.sonarqube.plugin.CommunityBranchPlugin;
 import org.junit.jupiter.api.Test;
 import org.sonar.api.batch.sensor.SensorContext;
+import org.sonar.api.config.Configuration;
 import org.sonar.api.utils.System2;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import java.util.Optional;
+
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -37,6 +40,7 @@ class ScannerPullRequestPropertySensorTest {
     @Test
     void testPropertySensorWithGitlabCIEnvValues() {
         SensorContext context = mock();
+        when(context.config()).thenReturn(mock());
 
         when(system2.envVariable("GITLAB_CI")).thenReturn("true");
         when(system2.envVariable("CI_API_V4_URL")).thenReturn("value");
@@ -51,6 +55,7 @@ class ScannerPullRequestPropertySensorTest {
     @Test
     void testPropertySensorWithGitlabEnvValues() {
         SensorContext context = mock();
+        when(context.config()).thenReturn(mock());
 
         when(system2.envVariable("GITLAB_CI")).thenReturn("true");
         when(system2.envVariable("CI_MERGE_REQUEST_PROJECT_URL")).thenReturn("value");
@@ -58,5 +63,16 @@ class ScannerPullRequestPropertySensorTest {
 
         sensor.execute(context);
         verify(context, times(2)).addContextProperty(anyString(), anyString());
+    }
+
+    @Test
+    void testPropertySensorForwardsIssueCommentsSetting() {
+        SensorContext context = mock();
+        Configuration configuration = mock();
+        when(context.config()).thenReturn(configuration);
+        when(configuration.get(CommunityBranchPlugin.PR_ISSUE_COMMENTS_ENABLED)).thenReturn(Optional.of("false"));
+
+        sensor.execute(context);
+        verify(context).addContextProperty(CommunityBranchPlugin.PR_ISSUE_COMMENTS_ENABLED, "false");
     }
 }
